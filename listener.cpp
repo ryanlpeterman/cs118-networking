@@ -56,7 +56,7 @@ void Listener::run(){
 		exit(1);
 	}
 
-	cout << "Message Received: " << buffer << endl;
+	std::cout << "Message Received: " << buffer << std::endl;
 
 	if(write(conn_sock_fd, "Hello world", 11) < 0) {
 		std::cerr << "ERROR: could not write to socket" << std::endl;
