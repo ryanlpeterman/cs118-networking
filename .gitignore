@@ -1,3 +1,5 @@
+temp/*
+large.txt
 *.o
 *.dSYM
 .vagrant

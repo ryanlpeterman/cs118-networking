@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -8,7 +9,31 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <vector>
+#include <fstream>
 #include <sstream>
+
+// reads a file into a string and returns it
+std::string read_file(std::string filename) {
+    std::ifstream ifs(filename, std::ios::binary|std::ios::ate);
+    std::ifstream::pos_type pos = ifs.tellg();
+
+    std::vector<char> result(pos);
+
+    ifs.seekg(0, std::ios::beg);
+    ifs.read(&result[0], pos);
+
+    std::string str_rep(result.begin(), result.end());
+
+    return str_rep;
+}
+
+// checks if file exists and is regular file
+bool is_regular_file(const char *path) {
+    struct stat path_stat;
+    stat(path, &path_stat);
+    return S_ISREG(path_stat.st_mode);
+}
 
 int main(int argc, char* argv[])
 {
@@ -23,6 +48,11 @@ int main(int argc, char* argv[])
     short port = std::atoi(argv[2]);
     std::string fileName(argv[3]);
 
+    // check if file exists
+    if (!is_regular_file(argv[3])) {
+    	std::cerr << "ERROR: filename provided does not exist or is not a regular file." << std::endl;
+    	exit(1);
+    }
 
  	// create a socket using TCP IP
  	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -39,7 +69,7 @@ int main(int argc, char* argv[])
 
  	struct sockaddr_in serverAddr;
  	serverAddr.sin_family = AF_INET;
- 	serverAddr.sin_port = htons(5000);     // short, network byte order
+ 	serverAddr.sin_port = htons(port);     // short, network byte order
  	serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
  	memset(serverAddr.sin_zero, '\0', sizeof(serverAddr.sin_zero));
 
@@ -62,38 +92,23 @@ int main(int argc, char* argv[])
 	ntohs(clientAddr.sin_port) << std::endl;
 
 
-	// send/receive data to/from connection
-	bool isEnd = false;
-	std::string input;
-	char buf[20] = {0};
-	std::stringstream ss;
+	std::string file_contents = read_file(fileName);
+	size_t bytes_written = 0;
 
-	while (!isEnd) {
-		memset(buf, '\0', sizeof(buf));
+	// while we haven't written entire file out
+	while (bytes_written < file_contents.size()) {
 
-		std::cout << "send: ";
-		std::cin >> input;
-		if (send(sockfd, input.c_str(), input.size(), 0) == -1) {
-			perror("send");
-			return 4;
+		std::string to_send = file_contents.substr(bytes_written, 255);
+		bytes_written += send(sockfd, to_send.c_str(), to_send.size(), 0);
+
+		if (bytes_written < 0) {
+			std::cerr << "ERROR: when sending bytes from file" << std::endl;
+			exit(1);
 		}
-
-
-		if (recv(sockfd, buf, 20, 0) == -1) {
-			perror("recv");
-			return 5;
-		}
-		ss << buf << std::endl;
-		std::cout << "echo: ";
-		std::cout << buf << std::endl;
-
-		if (ss.str() == "close\n")
-			break;
-
-		ss.str("");
  	}
 
-  close(sockfd);
+ 	std::cout << "Transfer complete! Total number of bytes written: " << bytes_written << std::endl;
 
-  return 0;
+  	close(sockfd);
+  	return 0;
 }
