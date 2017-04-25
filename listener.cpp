@@ -64,9 +64,6 @@ void Listener::connectAndHandle() {
 			exit(1);
 		}
 
-		// start time
-		// auto start = std::chrono::steady_clock::now();
-
 		// connection accepted at this point, we must determine its number
 		countMutex_.lock();
 		int conNumber = conCount_;
@@ -82,19 +79,67 @@ void Listener::connectAndHandle() {
 		bzero(buffer, 256);
 		size_t bytes_read = 0;
 		size_t total_bytes = 0;
-		while((bytes_read = read(conn_sock_fd, buffer, 256)) > 0) {
 
+		// set of fds to check for available read
+		fd_set readfds;
+		FD_ZERO(&readfds);
+		// add current socket to fd set
+		FD_SET(conn_sock_fd, &readfds);
+
+		struct timeval tv;
+		tv.tv_sec = 10;
+		tv.tv_usec = 0;
+
+		//set timeout/check if there is data to read
+		int retval = select(conn_sock_fd + 1, &readfds, NULL, NULL, &tv);
+		if (retval == -1) {
+			std::cerr << "ERROR: error occured in select" << std::endl;
+			return;
+		} else if (retval == 0) {
+			std::cerr << "ERROR: timeout occured in select" << std::endl;
+			myfile << "ERROR: timeout occured in select";
+			close(conn_sock_fd);
+			return;
+		}
+
+		while((bytes_read = read(conn_sock_fd, buffer, 256)) > 0) {
+			std::cout << "read succeeded" << std::endl;
 			if (bytes_read < 0) {
 				std::cerr << "ERROR: could not read from socket" << std::endl;
-				exit(1);
+				return;
 			}
 
 			total_bytes += bytes_read;
 			myfile.write(buffer, bytes_read);
+
+			// reinit since select call makes tv undefined
+			tv.tv_sec = 10;
+			tv.tv_usec = 0;
+
+			// set timeout/check if there is data to read
+			int retval = select(conn_sock_fd + 1, &readfds, NULL, NULL, &tv);
+			if (retval == -1) {
+				std::cerr << "ERROR: error occured in select" << std::endl;
+				return;
+			} else if (retval == 0) {
+				std::cerr << "ERROR: timeout occured in select" << std::endl;
+				close(conn_sock_fd);
+
+				// close old fd
+				myfile.close();
+
+				// clear partially added input
+				std::ofstream ofs;
+				ofs.open(fileName, std::ofstream::out | std::ofstream::trunc);
+				ofs << "ERROR: timeout occured in select";
+				ofs.close();
+
+				return;
+			}
 		}
 
 		myfile.close();
-		std::cout << "Connection Number " << conNumber << " Done: Received file!" << total_bytes << std::endl;
+		std::cout << "Connection Number " << conNumber << " Done: Received file of size " << total_bytes << std::endl;
 	}
 }
 

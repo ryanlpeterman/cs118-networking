@@ -4,7 +4,6 @@
 #include <string>
 #include <iostream>
 #include <thread>
-#include <chrono>
 #include <mutex>
 #include <fstream>
 
@@ -12,6 +11,7 @@
 #include <string.h>
 // for read/write sys call
 #include <unistd.h>
+#include <sys/types.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
