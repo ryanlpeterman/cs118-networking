@@ -11,9 +11,6 @@ void signalHandler(int signum) {
 
 int main(int argc, char* argv[])
 {
-	// TODO: If the client doesn’t send any data during gracefully terminated TCP connection, the server should create an empty file with the name that corresponds to the connection number.
-	// TODO: The server must assume error if no data received from the client for over 10 seconds. It should abort the connection and write a single ERROR string (without end-of-line/carret-return symbol) into the corresponding file. Note that any partial input must be discarded.
-
    	// only two arg to server possible
     if (argc != 3)
     {

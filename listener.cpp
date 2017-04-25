@@ -103,7 +103,7 @@ void Listener::connectAndHandle() {
 		}
 
 		while((bytes_read = read(conn_sock_fd, buffer, 256)) > 0) {
-			std::cout << "read succeeded" << std::endl;
+
 			if (bytes_read < 0) {
 				std::cerr << "ERROR: could not read from socket" << std::endl;
 				return;
