@@ -2,6 +2,18 @@
 
 Template for for [UCLA CS118 Spring 2017 Project 1](http://web.cs.ucla.edu/classes/spring17/cs118/project-1.html)
 
+Name: Ryan Peterman
+UID: 704269982
+
+## Problems and Solutions
+TODO
+
+## Additional Libraries Used
+TODO
+
+## Acknowledgements of Code used
+Aside from StackOverflow for small code examples, the main place I got code from was Beej's guide to networking. It provided examples on how to use getaddrinfo() and on how to use the socket system calls.
+
 ## Makefile
 
 This provides a couple make targets for things.
