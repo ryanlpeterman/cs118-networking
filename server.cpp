@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 
     // save arguments
     int portNum = std::atoi(argv[1]);
-    int numThreads = 10;
+    int numThreads = 20;
     std::string fileDir(argv[2]);
 
     // configure server

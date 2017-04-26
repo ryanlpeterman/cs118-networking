@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <fcntl.h>
 
 #include <iostream>
 #include <vector>
@@ -40,7 +41,6 @@ bool is_regular_file(const char *path) {
 // sets 10 sec timeout for being able to write
 // returns true if timeout_occured or if error else false
 bool timeout_occured(int fd) {
-
 	// set of fds to check for available read
 	fd_set writefds;
 	FD_ZERO(&writefds);
@@ -54,10 +54,8 @@ bool timeout_occured(int fd) {
 	//set timeout/check if there is data to write
 	int retval = select(fd + 1, NULL, &writefds, NULL, &tv);
 	if (retval == -1) {
-		std::cerr << "ERROR: error occured in select" << std::endl;
 		return true;
 	} else if (retval == 0) {
-		std::cerr << "ERROR: timeout occured in select" << std::endl;
 		return true;
 	}
 
@@ -110,19 +108,35 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        // setting timeout for connection
-        if (timeout_occured(sockfd)) {
-        	close(sockfd);
-        	std::cerr << "ERROR: timeout when connecting" << std::endl;
-        	return 1;
-        }
+        // set fd to non-blocking connect
+        long arg = fcntl(sockfd, F_GETFL, NULL);
+        arg |= O_NONBLOCK;
+        fcntl(sockfd, F_SETFL, arg);
 
         // try connecting to current socket
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-            close(sockfd);
-            perror("client: connect");
-            continue;
+        int res = connect(sockfd, p->ai_addr, p->ai_addrlen);
+
+        // not connected for various reasons yet
+        if (res < 0) {
+        	if(errno == EINPROGRESS) {
+        		// sets 10 sec timer on connecting
+        		if (timeout_occured(sockfd)) {
+     				std::cerr << "ERROR: timeout occured when trying to connect" << std::endl;
+     				return 1;
+     			}
+
+     			// timeout didn't occur if we get here
+
+        	} else {
+        		std::cerr << "ERROR: error when connecting" << std::endl;
+        		return 1;
+        	}
         }
+
+        // set to blocking mode again
+        arg = fcntl(sockfd, F_GETFL, NULL);
+        arg &= (~O_NONBLOCK);
+        fcntl(sockfd, F_SETFL, arg);
 
         break;
     }
@@ -142,7 +156,6 @@ int main(int argc, char* argv[])
 	std::string file_contents = read_file(fileName);
 	std::cout << "Number of bytes to write out:" << file_contents.size() << std::endl;
 	size_t bytes_written = 0;
-
 
 	// setting timeout for connection
     if (timeout_occured(sockfd)) {
