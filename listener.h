@@ -7,10 +7,9 @@
 #include <mutex>
 #include <fstream>
 
-// for bzero
-#include <string.h>
-// for read/write sys call
-#include <unistd.h>
+
+#include <string.h> 	// for bzero
+#include <unistd.h> 	// for read/write sys call
 #include <sys/types.h>
 #include <sys/types.h>
 #include <sys/socket.h>

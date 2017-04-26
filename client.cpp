@@ -113,23 +113,37 @@ int main(int argc, char* argv[])
         arg |= O_NONBLOCK;
         fcntl(sockfd, F_SETFL, arg);
 
+        socklen_t lon;
+        int valopt;
+
         // try connecting to current socket
-        int res = connect(sockfd, p->ai_addr, p->ai_addrlen);
+        int conn_res = connect(sockfd, p->ai_addr, p->ai_addrlen);
 
         // not connected for various reasons yet
-        if (res < 0) {
+        if (conn_res < 0) {
+        	// in progress due to nonblocking
         	if(errno == EINPROGRESS) {
-        		// sets 10 sec timer on connecting
-        		if (timeout_occured(sockfd)) {
-     				std::cerr << "ERROR: timeout occured when trying to connect" << std::endl;
-     				return 1;
-     			}
+        		// no timeout
+        		if (!timeout_occured(sockfd)) {
 
-     			// timeout didn't occur if we get here
+		           	lon = sizeof(int);
+		           	getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon);
+
+		           	if (valopt) {
+		           	std::cerr << "ERROR: Error in connection" << std::endl;
+		            	continue;
+		            }
+
+		        // exit with non-zero exit status on connection timeout
+		        } else {
+	        		std::cerr << "ERROR: timeout or error when connecting" << std::endl;
+	        		close(sockfd);
+	        		return 1;
+		        }
 
         	} else {
         		std::cerr << "ERROR: error when connecting" << std::endl;
-        		return 1;
+        		continue;
         	}
         }
 
@@ -167,14 +181,13 @@ int main(int argc, char* argv[])
 	// while we haven't written entire file out
 	while (bytes_written < file_contents.size()) {
 
-		std::string to_send = file_contents.substr(bytes_written, 255);
+		std::string to_send = file_contents.substr(bytes_written, 256);
 		int send_res = send(sockfd, to_send.c_str(), to_send.size(), 0);
 		if (send_res < 0) {
 			std::cerr << "ERROR: could not send data to server" << std::endl;
 			return 1;
 		}
 		bytes_written += send_res;
-		// std::cout << "Sent the following bytes: " << send_res << std::endl;
 
 		if (bytes_written < 0) {
 			std::cerr << "ERROR: when sending bytes from file" << std::endl;
@@ -190,7 +203,6 @@ int main(int argc, char* argv[])
  	}
 
  	std::cout << "Transfer complete! Total number of bytes written: " << bytes_written << std::endl;
-
 
   	close(sockfd);
   	return 0;
